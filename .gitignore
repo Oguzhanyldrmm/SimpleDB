@@ -1,0 +1,21 @@
+.DS_Store
+
+# Eclipse
+**/bin/
+.metadata/
+.recommenders/
+
+# VS Code / local editor
+.vscode/
+
+# Local build outputs
+out/
+
+# Runtime databases created while testing
+studentdb/
+SimpleDBEngine/studentdb/
+SimpleDBClients/studentdb/
+
+# Java
+*.class
+
