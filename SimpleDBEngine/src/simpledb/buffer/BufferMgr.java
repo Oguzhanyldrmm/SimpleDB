@@ -11,6 +11,7 @@ import simpledb.log.LogMgr;
 public class BufferMgr {
    private Buffer[] bufferpool;
    private int numAvailable;
+    private int lastReplacedIndex = -1;
    private static final long MAX_TIME = 10000; // 10 seconds
    
    /**
@@ -24,7 +25,7 @@ public class BufferMgr {
       bufferpool = new Buffer[numbuffs];
       numAvailable = numbuffs;
       for (int i=0; i<numbuffs; i++)
-         bufferpool[i] = new Buffer(fm, lm);
+         bufferpool[i] = new Buffer(fm, lm, i);
    }
    
    /**
@@ -121,9 +122,23 @@ public class BufferMgr {
    }
    
    private Buffer chooseUnpinnedBuffer() {
-      for (Buffer buff : bufferpool)
-         if (!buff.isPinned())
-         return buff;
+      int start = (lastReplacedIndex + 1) % bufferpool.length;
+      for (int i = 0; i < bufferpool.length; i++) {
+         int index = (start + i) % bufferpool.length;
+         Buffer buff = bufferpool[index];
+         if (!buff.isPinned()) {
+            lastReplacedIndex = index;
+            return buff;
+         }
+      }
       return null;
+   }
+
+   public synchronized void printStatus() {
+      for (Buffer buff : bufferpool) {
+         String block = (buff.block() == null) ? "empty" : buff.block().toString();
+         String pinned = buff.isPinned() ? "pinned" : "unpinned";
+         System.out.println("Buffer " + buff.getId() + ": " + block + " " + pinned);
+      }
    }
 }

@@ -22,6 +22,10 @@ public class Page {
    }
 
    public void setInt(int offset, int n) {
+      if (!fits(offset, Integer.BYTES)) {
+         System.out.println("ERROR: The integer " + n + " does not fit at location " + offset + " of the page");
+         return;
+      }
       bb.putInt(offset, n);
    }
 
@@ -34,29 +38,55 @@ public class Page {
    }
 
    public void setBytes(int offset, byte[] b) {
+      int needed = Integer.BYTES + b.length;
+      if (!fits(offset, needed)) {
+         System.out.println("ERROR: The byte array of length " + b.length + " does not fit at location " + offset + " of the page");
+         return;
+      }
       bb.position(offset);
       bb.putInt(b.length);
       bb.put(b);
    }
    
    public String getString(int offset) {
-      byte[] b = getBytes(offset);
-      return new String(b, CHARSET);
+      StringBuilder sb = new StringBuilder();
+      int pos = offset;
+      while (fits(pos, Character.BYTES)) {
+         char ch = bb.getChar(pos);
+         if (ch == '\0')
+            return sb.toString();
+         sb.append(ch);
+         pos += Character.BYTES;
+      }
+      return sb.toString();
    }
 
    public void setString(int offset, String s) {
-      byte[] b = s.getBytes(CHARSET);
-      setBytes(offset, b);
+      int needed = maxLength(s.length());
+      if (!fits(offset, needed)) {
+         System.out.println("ERROR: The string \"" + s + "\" does not fit at location " + offset + " of the page");
+         return;
+      }
+
+      int pos = offset;
+      for (int i = 0; i < s.length(); i++) {
+         bb.putChar(pos, s.charAt(i));
+         pos += Character.BYTES;
+      }
+      bb.putChar(pos, '\0');
    }
 
    public static int maxLength(int strlen) {
-      float bytesPerChar = CHARSET.newEncoder().maxBytesPerChar();
-      return Integer.BYTES + (strlen * (int)bytesPerChar);
+      return (strlen + 1) * Character.BYTES;
    }
 
    // a package private method, needed by FileMgr
    ByteBuffer contents() {
       bb.position(0);
       return bb;
+   }
+
+   private boolean fits(int offset, int length) {
+      return offset >= 0 && length >= 0 && offset + length <= bb.capacity();
    }
 }
